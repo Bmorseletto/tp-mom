@@ -1,0 +1,268 @@
+COMPOSE_HTTP_TIMEOUT=300 docker compose -f docker-compose.yaml up --build --remove-orphans --detach
+#1 [internal] load local bake definitions
+#1 reading from stdin 983B done
+#1 DONE 0.0s
+
+#2 [rabbitmq internal] load build definition from Dockerfile
+#2 transferring dockerfile: 107B done
+#2 DONE 0.0s
+
+#3 [tests internal] load build definition from Dockerfile
+#3 transferring dockerfile: 208B done
+#3 DONE 0.1s
+
+#4 [tests internal] load metadata for docker.io/library/python:3-alpine
+#4 DONE 1.0s
+
+#5 [rabbitmq internal] load metadata for docker.io/library/rabbitmq:3.9.16-management-alpine
+#5 DONE 1.1s
+
+#6 [tests internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [tests 1/5] FROM docker.io/library/python:3-alpine@sha256:faee120f7885a06fcc9677922331391fa690d911c020abb9e8025ff3d908e510
+#7 DONE 0.0s
+
+#8 [tests internal] load build context
+#8 transferring context: 1.78kB done
+#8 DONE 0.0s
+
+#9 [tests 2/5] COPY tests/requirements.txt ./
+#9 CACHED
+
+#10 [tests 3/5] RUN pip3 install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [rabbitmq internal] load .dockerignore
+#11 transferring context: 2B done
+#11 DONE 0.1s
+
+#12 [tests 4/5] COPY common ./common
+#12 ...
+
+#13 [rabbitmq 1/2] FROM docker.io/library/rabbitmq:3.9.16-management-alpine@sha256:3126a9d84c6061b21cc17531f1d417dbab3840158a5718c5c2ed17ddbab173c2
+#13 DONE 0.0s
+
+#14 [rabbitmq 2/2] RUN apk update && apk add curl
+#14 CACHED
+
+#15 [rabbitmq] exporting to image
+#15 exporting layers done
+#15 writing image sha256:540f958d0ffacdbd42abff3a9385159e6dbeb600fb630b66ab1fb3d1ea4ae0d8 done
+#15 naming to docker.io/library/python-rabbitmq 0.1s done
+#15 DONE 0.1s
+
+#12 [tests 4/5] COPY common ./common
+#12 DONE 0.2s
+
+#16 [tests 5/5] COPY tests .
+#16 DONE 0.2s
+
+#17 [rabbitmq] resolving provenance for metadata file
+#17 DONE 0.0s
+
+#18 [tests] exporting to image
+#18 exporting layers 0.1s done
+#18 writing image sha256:fd8dbd0aa641616ad83200c0746c74c72bfdca2472440c8ca8b2a764b158b62e done
+#18 naming to docker.io/library/python-tests done
+#18 DONE 0.1s
+
+#19 [tests] resolving provenance for metadata file
+#19 DONE 0.0s
+docker compose -f docker-compose.yaml logs --follow tests
+tests  | ============================= test session starts ==============================
+tests  | platform linux -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0
+tests  | rootdir: /
+tests  | configfile: pytest.ini
+tests  | testpaths: test_queue.py, test_exchange.py
+tests  | plugins: timeout-2.4.0
+tests  | timeout: 10.0s
+tests  | timeout method: signal
+tests  | timeout func_only: False
+tests  | collected 19 items
+tests  | 
+tests  | test_queue.py .F
+tests  | 
+tests  | =================================== FAILURES ===================================
+tests  | _______________________ test_listen_to_message_and_close _______________________
+tests  | 
+tests  |     def test_listen_to_message_and_close():
+tests  |     	message = b"message"
+tests  |     	message_set = set()
+tests  |     	queue = middleware_rabbitmq.MessageMiddlewareQueueRabbitMQ(MOM_HOST, TEST_QUEUE_NAME)
+tests  |     	queue.send(message)
+tests  |     	message_consumer_tester = MessageConsumerTester(queue, message_set, 1)
+tests  | >   	queue.start_consuming(lambda message, ack, nack: message_consumer_tester.callback(message, ack, nack))
+tests  | 
+tests  | test_queue.py:72: 
+tests  | _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests  | common/middleware/middleware_rabbitmq.py:23: in start_consuming
+tests  |     self._channel.start_consuming()
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:1883: in start_consuming
+tests  |     self._process_data_events(time_limit=None)
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:2044: in _process_data_events
+tests  |     self.connection.process_data_events(time_limit=time_limit)
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:851: in process_data_events
+tests  |     self._dispatch_channel_events()
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:567: in _dispatch_channel_events
+tests  |     impl_channel._get_cookie()._dispatch_events()
+tests  | _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests  | 
+tests  | self = <BlockingChannel impl=<Channel number=1 OPEN conn=<SelectConnection OPEN transport=<pika.adapters.utils.io_services_ut...xtTransport object at 0x7a7e472f9450> params=<ConnectionParameters host=rabbitmq port=5672 virtual_host=/ ssl=False>>>>
+tests  | 
+tests  |     def _dispatch_events(self):
+tests  |         """Called by BlockingConnection to dispatch pending events.
+tests  |     
+tests  |         `BlockingChannel` schedules this callback via
+tests  |         `BlockingConnection._request_channel_dispatch`
+tests  |         """
+tests  |         while self._pending_events:
+tests  |             evt = self._pending_events.popleft()
+tests  |     
+tests  |             if type(evt) is _ConsumerDeliveryEvt:  # pylint: disable=C0123
+tests  |                 consumer_info = self._consumer_infos[evt.method.consumer_tag]
+tests  | >               consumer_info.on_message_callback(self, evt.method,
+tests  |                                                   evt.properties, evt.body)
+tests  | E               TypeError: test_listen_to_message_and_close.<locals>.<lambda>() takes 3 positional arguments but 4 were given
+tests  | 
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:1510: TypeError
+tests  | =========================== short test summary info ============================
+tests  | FAILED test_queue.py::test_listen_to_message_and_close - TypeError: test_list...
+tests  | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+tests  | ========================= 1 failed, 1 passed in 0.43s ==========================
+[Ktests exited with code 1
+COMPOSE_HTTP_TIMEOUT=300 docker compose -f docker-compose.yaml up --build --remove-orphans --detach
+#1 [internal] load local bake definitions
+#1 reading from stdin 983B done
+#1 DONE 0.0s
+
+#2 [rabbitmq internal] load build definition from Dockerfile
+#2 transferring dockerfile: 107B done
+#2 DONE 0.0s
+
+#3 [tests internal] load build definition from Dockerfile
+#3 transferring dockerfile: 208B done
+#3 DONE 0.0s
+
+#4 [tests internal] load metadata for docker.io/library/python:3-alpine
+#4 ...
+
+#5 [rabbitmq internal] load metadata for docker.io/library/rabbitmq:3.9.16-management-alpine
+#5 DONE 1.2s
+
+#6 [rabbitmq internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [rabbitmq 1/2] FROM docker.io/library/rabbitmq:3.9.16-management-alpine@sha256:3126a9d84c6061b21cc17531f1d417dbab3840158a5718c5c2ed17ddbab173c2
+#7 DONE 0.0s
+
+#8 [rabbitmq 2/2] RUN apk update && apk add curl
+#8 CACHED
+
+#9 [rabbitmq] exporting to image
+#9 exporting layers done
+#9 writing image sha256:540f958d0ffacdbd42abff3a9385159e6dbeb600fb630b66ab1fb3d1ea4ae0d8 done
+#9 naming to docker.io/library/python-rabbitmq done
+#9 DONE 0.0s
+
+#10 [rabbitmq] resolving provenance for metadata file
+#10 DONE 0.0s
+
+#4 [tests internal] load metadata for docker.io/library/python:3-alpine
+#4 DONE 1.4s
+
+#11 [tests internal] load .dockerignore
+#11 transferring context: 2B done
+#11 DONE 0.0s
+
+#12 [tests 1/5] FROM docker.io/library/python:3-alpine@sha256:faee120f7885a06fcc9677922331391fa690d911c020abb9e8025ff3d908e510
+#12 DONE 0.0s
+
+#13 [tests internal] load build context
+#13 transferring context: 1.79kB done
+#13 DONE 0.0s
+
+#14 [tests 2/5] COPY tests/requirements.txt ./
+#14 CACHED
+
+#15 [tests 3/5] RUN pip3 install --no-cache-dir -r requirements.txt
+#15 CACHED
+
+#16 [tests 4/5] COPY common ./common
+#16 DONE 0.1s
+
+#17 [tests 5/5] COPY tests .
+#17 DONE 0.1s
+
+#18 [tests] exporting to image
+#18 exporting layers 0.2s done
+#18 writing image sha256:1b4b4b425e6d69cb2f6180a5c2287cda9f6234d9dbd8f5f6272548d7b2b59d8a
+#18 writing image sha256:1b4b4b425e6d69cb2f6180a5c2287cda9f6234d9dbd8f5f6272548d7b2b59d8a done
+#18 naming to docker.io/library/python-tests done
+#18 DONE 0.3s
+
+#19 [tests] resolving provenance for metadata file
+#19 DONE 0.0s
+docker compose -f docker-compose.yaml logs --follow tests
+tests  | ============================= test session starts ==============================
+tests  | platform linux -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0
+tests  | rootdir: /
+tests  | configfile: pytest.ini
+tests  | testpaths: test_queue.py, test_exchange.py
+tests  | plugins: timeout-2.4.0
+tests  | timeout: 10.0s
+tests  | timeout method: signal
+tests  | timeout func_only: False
+tests  | collected 19 items
+tests  | 
+tests  | test_queue.py .F
+tests  | 
+tests  | =================================== FAILURES ===================================
+tests  | _______________________ test_listen_to_message_and_close _______________________
+tests  | 
+tests  |     def test_listen_to_message_and_close():
+tests  |     	message = b"message"
+tests  |     	message_set = set()
+tests  |     	queue = middleware_rabbitmq.MessageMiddlewareQueueRabbitMQ(MOM_HOST, TEST_QUEUE_NAME)
+tests  |     	queue.send(message)
+tests  |     	message_consumer_tester = MessageConsumerTester(queue, message_set, 1)
+tests  | >   	queue.start_consuming(lambda message, ack, nack: message_consumer_tester.callback(message, ack, nack))
+tests  | 
+tests  | test_queue.py:72: 
+tests  | _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests  | common/middleware/middleware_rabbitmq.py:22: in start_consuming
+tests  |     self._channel.start_consuming()
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:1883: in start_consuming
+tests  |     self._process_data_events(time_limit=None)
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:2044: in _process_data_events
+tests  |     self.connection.process_data_events(time_limit=time_limit)
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:851: in process_data_events
+tests  |     self._dispatch_channel_events()
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:567: in _dispatch_channel_events
+tests  |     impl_channel._get_cookie()._dispatch_events()
+tests  | usr/local/lib/python3.14/site-packages/pika/adapters/blocking_connection.py:1510: in _dispatch_events
+tests  |     consumer_info.on_message_callback(self, evt.method,
+tests  | common/middleware/middleware_rabbitmq.py:21: in <lambda>
+tests  |     on_message_callback=lambda ch, message, ack, nack : on_message_callback(message,ack,nack))
+tests  |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests  | test_queue.py:72: in <lambda>
+tests  |     queue.start_consuming(lambda message, ack, nack: message_consumer_tester.callback(message, ack, nack))
+tests  |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests  | _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests  | 
+tests  | self = <utils.message_consumer_tester.MessageConsumerTester object at 0x7cff154bfb60>
+tests  | message = <Basic.Deliver(['consumer_tag=ctag1.7a207d8248804d88900d278f55590eca', 'delivery_tag=1', 'exchange=', 'redelivered=False', 'routing_key=test_queue'])>
+tests  | ack = <BasicProperties>, nack = b'message'
+tests  | 
+tests  |     def callback(self, message, ack, nack):
+tests  | >   	self.message_set.add(message)
+tests  | E    TypeError: cannot use 'pika.spec.Basic.Deliver' as a set element (unhashable type: 'Deliver')
+tests  | 
+tests  | utils/message_consumer_tester.py:8: TypeError
+tests  | =========================== short test summary info ============================
+tests  | FAILED test_queue.py::test_listen_to_message_and_close - TypeError: cannot us...
+tests  | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+tests  | ========================= 1 failed, 1 passed in 0.45s ==========================
+[Ktests exited with code 1
