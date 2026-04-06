@@ -10,7 +10,6 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         self._channel.queue_declare(queue=queue_name, durable=True, arguments={'x-queue-type': 'quorum'})
         self._name = queue_name
         self._delivery_tag = None
-        pass
     def send(self,message):
         try:
             self._channel.basic_publish(exchange='',
@@ -24,6 +23,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         try:
             self._channel.queue_purge(self._name)
             self._channel.close()
+            self._conn.close()
         except Exception as e:
             raise MessageMiddlewareCloseError(e)
     def start_consuming(self, on_message_callback):
@@ -71,10 +71,8 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             raise MessageMiddlewareMessageError(e)
     def close(self):
         try:
-            if self._channel and self._channel.is_open:
-                self._channel.close()
-            if self._conn and self._conn.is_open:
-                self._conn.close()
+            self._channel.close()
+            self._conn.close()
         except Exception as e:
             raise MessageMiddlewareCloseError(e)
     def start_consuming(self, on_message_callback):
