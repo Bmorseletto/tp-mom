@@ -26,7 +26,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
             raise MessageMiddlewareCloseError(e)
     def start_consuming(self, on_message_callback):
         try:
-           _start_consuming_wrapper(self, on_message_callback=on_message_callback)
+           _start_consuming(self, on_message_callback=on_message_callback)
         except pika.exceptions.AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
@@ -69,7 +69,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             raise MessageMiddlewareCloseError(e)
     def start_consuming(self, on_message_callback):
         try:
-           _start_consuming_wrapper(self, on_message_callback=on_message_callback)
+           _start_consuming(self, on_message_callback=on_message_callback)
         except pika.exceptions.AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
@@ -87,7 +87,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
 def _set_delivery_tag(message_middleware, delivery_tag):
     message_middleware._delivery_tag = delivery_tag
     
-def _start_consuming_wrapper(message_middleware, on_message_callback):
+def _start_consuming(message_middleware, on_message_callback):
     def callback(ch, method, properties, body):
         _set_delivery_tag( message_middleware,method.delivery_tag) 
         on_message_callback(body, message_middleware.ack, ch.basic_nack)
