@@ -54,10 +54,10 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
 
     def send(self,message):
         try:
-            for key in self._routing_keys:
-                self._channel.basic_publish(exchange=self._exchange_name,
-                            routing_key=key,
-                            body=message)
+            keys = ".".join(self._routing_keys)
+            self._channel.basic_publish(exchange=self._exchange_name,
+                        routing_key=keys,
+                        body=message)
         except pika.exceptions.AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
