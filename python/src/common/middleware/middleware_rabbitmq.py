@@ -10,6 +10,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         self._channel.queue_declare(queue=queue_name, durable=True, arguments={'x-queue-type': 'quorum'})
         self._queue_name = queue_name
         self._delivery_tag = None
+        self._consumer_tag = None
     def send(self,message):
         try:
             self._channel.basic_publish(exchange='',
@@ -33,24 +34,29 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
             raise MessageMiddlewareMessageError(e)
     def stop_consuming(self):
         try:
-            self._channel.stop_consuming()
+            self._channel.stop_consuming(self._consumer_tag)
         except pika.exceptions.AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(e)
     def ack(self):
         self._channel.basic_ack(delivery_tag=self._delivery_tag)
+    def set_delivery_tag(self, delivery_tag):
+        self._delivery_tag = delivery_tag
+    def set_consumer_tag(self, consumer_tag):
+        self._consumer_tag = consumer_tag
 
 class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
     def __init__(self, host, exchange_name, routing_keys):
         self._conn = pika.BlockingConnection(pika.ConnectionParameters(host))
         self._channel =  self._conn.channel()
         self._exchange_name = exchange_name
-        self._channel.exchange_declare(exchange= self._exchange_name,exchange_type="topic" )
+        self._channel.exchange_declare(exchange= self._exchange_name,exchange_type="topic", auto_delete=True)
         result = self._channel.queue_declare(queue="", exclusive=True, auto_delete=True)
         self._queue_name = result.method.queue
         for key in routing_keys:
             self._channel.queue_bind(exchange=self._exchange_name,queue=self._queue_name,  routing_key=key)  
         self._routing_keys = routing_keys
         self._delivery_tag = None
+        self._consumer_tag = None
 
     def send(self,message):
         try:
@@ -64,6 +70,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             raise MessageMiddlewareMessageError(e)
     def close(self):
         try:
+            #self._channel.exchange_delete(self._exchange_name)
             _close(self)
         except Exception as e:
             raise MessageMiddlewareCloseError(e)
@@ -76,26 +83,29 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             raise MessageMiddlewareMessageError(e)
     def stop_consuming(self):
         try:
-            self._channel.stop_consuming()
+            self._channel.stop_consuming(self._consumer_tag)
         except pika.exceptions.AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(e)
     def ack(self):
         self._channel.basic_ack(delivery_tag=self._delivery_tag)
-
+    def set_delivery_tag(self, delivery_tag):
+        self._delivery_tag = delivery_tag
+    def set_consumer_tag(self, consumer_tag):
+        self._consumer_tag = consumer_tag
 
 ### Auxiliary function ###
-def _set_delivery_tag(message_middleware, delivery_tag):
-    message_middleware._delivery_tag = delivery_tag
-    
 def _start_consuming(message_middleware, on_message_callback):
     def callback(ch, method, properties, body):
-        _set_delivery_tag( message_middleware,method.delivery_tag) 
+        message_middleware.set_delivery_tag(method.delivery_tag) 
         on_message_callback(body, message_middleware.ack, ch.basic_nack)
-    message_middleware._channel.basic_consume(queue=message_middleware._queue_name,on_message_callback= callback)
+    consumer_tag = message_middleware._channel.basic_consume(queue=message_middleware._queue_name,on_message_callback= callback)
+    message_middleware.set_consumer_tag(consumer_tag)
     message_middleware._channel.start_consuming()
 
 def _close(message_middleware):
-    message_middleware._channel.queue_purge(message_middleware._queue_name)
+    if message_middleware._consumer_tag != None:
+        message_middleware.stop_consuming()
+    message_middleware._channel.queue_delete(message_middleware._queue_name)
     if message_middleware._channel.is_open:
         message_middleware._channel.close()
     if message_middleware._conn.is_open:
