@@ -17,8 +17,10 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
                         routing_key=self._queue_name,
                         body=message)
         except pika.exceptions.AMQPConnectionError as e:
+            self.close()
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
+            self.close()
             raise MessageMiddlewareMessageError(e)
     def close(self):
         try:
@@ -29,13 +31,16 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         try:
            _start_consuming(self, on_message_callback=on_message_callback)
         except pika.exceptions.AMQPConnectionError as e:
+            self.close()
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
-            raise MessageMiddlewareMessageError(e)
+            self.close()
+            raise MessageMiddlewareMessageError(e)  
     def stop_consuming(self):
         try:
             self._channel.stop_consuming(self._consumer_tag)
         except pika.exceptions.AMQPConnectionError as e:
+            self.close()
             raise MessageMiddlewareDisconnectedError(e)
     def ack(self):
         self._channel.basic_ack(delivery_tag=self._delivery_tag)
@@ -65,8 +70,10 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
                         routing_key=keys,
                         body=message)
         except pika.exceptions.AMQPConnectionError as e:
+            self.close()
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
+            self.close()
             raise MessageMiddlewareMessageError(e)
     def close(self):
         try:
@@ -77,13 +84,16 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
         try:
            _start_consuming(self, on_message_callback=on_message_callback)
         except pika.exceptions.AMQPConnectionError as e:
+            self.close()
             raise MessageMiddlewareDisconnectedError(e)
         except Exception as e:
+            self.close()
             raise MessageMiddlewareMessageError(e)
     def stop_consuming(self):
         try:
             self._channel.stop_consuming(self._consumer_tag)
         except pika.exceptions.AMQPConnectionError as e:
+            self.close()
             raise MessageMiddlewareDisconnectedError(e)
     def ack(self):
         self._channel.basic_ack(delivery_tag=self._delivery_tag)
@@ -102,10 +112,10 @@ def _start_consuming(message_middleware, on_message_callback):
     message_middleware._channel.start_consuming()
 
 def _close(message_middleware):
-    if message_middleware._consumer_tag != None:
-        message_middleware.stop_consuming()
-    message_middleware._channel.queue_delete(message_middleware._queue_name)
     if message_middleware._channel.is_open:
+        if message_middleware._consumer_tag != None:
+            message_middleware.stop_consuming()
+        message_middleware._channel.queue_delete(message_middleware._queue_name)
         message_middleware._channel.close()
     if message_middleware._conn.is_open:
         message_middleware._conn.close()
