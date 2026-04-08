@@ -4,10 +4,11 @@ import string
 from .middleware import MessageMiddlewareQueue, MessageMiddlewareExchange,MessageMiddlewareDisconnectedError, MessageMiddlewareCloseError,MessageMiddlewareMessageError
 
 class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
+    QUEUE_ARGUMENTS = {'x-queue-type': 'quorum'}
     def __init__(self, host, queue_name):
         self._conn = pika.BlockingConnection(pika.ConnectionParameters(host))
         self._channel =  self._conn.channel()
-        self._channel.queue_declare(queue=queue_name, durable=True, arguments={'x-queue-type': 'quorum'})
+        self._channel.queue_declare(queue=queue_name, durable=True, arguments=self.QUEUE_ARGUMENTS)
         self._queue_name = queue_name
         self._delivery_tag = None
         self._consumer_tag = None
@@ -50,11 +51,12 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         self._consumer_tag = consumer_tag
 
 class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
+    EXCHANGE_TYPE = "topic"
     def __init__(self, host, exchange_name, routing_keys):
         self._conn = pika.BlockingConnection(pika.ConnectionParameters(host))
         self._channel =  self._conn.channel()
         self._exchange_name = exchange_name
-        self._channel.exchange_declare(exchange= self._exchange_name,exchange_type="topic", auto_delete=True)
+        self._channel.exchange_declare(exchange= self._exchange_name,exchange_type=self.EXCHANGE_TYPE, auto_delete=True)
         result = self._channel.queue_declare(queue="", exclusive=True, auto_delete=True)
         self._queue_name = result.method.queue
         for key in routing_keys:
