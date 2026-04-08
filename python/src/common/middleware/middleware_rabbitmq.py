@@ -70,7 +70,6 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             raise MessageMiddlewareMessageError(e)
     def close(self):
         try:
-            #self._channel.exchange_delete(self._exchange_name)
             _close(self)
         except Exception as e:
             raise MessageMiddlewareCloseError(e)
